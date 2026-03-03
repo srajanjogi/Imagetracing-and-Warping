@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Electron Color Picker Pro - React</title>
+    <!-- OpenCV.js -->
+    <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
+    <script>
+      window.cvReady = false;
+      window.Module = {
+        onRuntimeInitialized() {
+          window.cvReady = true;
+          console.log('OpenCV ready');
+        },
+      };
+    </script>
+    <!-- Legacy canvas logic (wrapped in window.initLegacyApp) -->
+    <script src="/renderer.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
