@@ -593,12 +593,19 @@ document.getElementById('uploadBtn').onclick = () => {
             const img = new Image();
             img.onload = () => {
                 activeImg = img;
-                const s = Math.min(400 / img.width, 300 / img.height, 1);
+                // Scale to fit up to 500×260 so preview size matches the original image box
+                const s = Math.min(500 / img.width, 260 / img.height, 1);
                 canvas.width = img.width * s; canvas.height = img.height * s;
                 overlay.width = canvas.width; overlay.height = canvas.height;
                 recCanvas.width = canvas.width; recCanvas.height = canvas.height;
                 const c = document.getElementById('imgContainer');
-                c.style.width = canvas.width + 'px'; c.style.height = canvas.height + 'px';
+
+                // show the untouched original in column 1
+                const orig = document.getElementById('originalPreview');
+                if (orig) {
+                    orig.src = event.target.result;
+                }
+
                 applyChanges();
                 applyChanges();
                 originalImageSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
