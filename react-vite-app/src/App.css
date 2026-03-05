@@ -6,10 +6,10 @@ body,
 
 body {
   font-family: 'Segoe UI', Tahoma, sans-serif;
-  background: #f9f9f9;
+  background: #0b0d11; /* dark app background to match FrameNext */
   margin: 0;
   padding: 0;
-  color: #000;
+  color: #f5f5f5;
 }
 
 .main-layout {
@@ -19,8 +19,21 @@ body {
   align-items: stretch; /* make columns equal height */
   width: 100%;
   height: 100%; /* lock overall layout height to window */
-  padding: 16px;
+  padding: 12px 16px;
   box-sizing: border-box;
+}
+
+.no-image .column-2,
+.no-image .column-3 {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.has-image .column-2,
+.has-image .column-3 {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.2s ease-in-out;
 }
 
 .column {
@@ -30,8 +43,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
+  background: #16191f;
+  border: 1px solid #262b35;
   border-radius: 4px;
   padding: 16px;
   box-sizing: border-box;
@@ -51,7 +64,7 @@ body {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 8px;
-  color: #333;
+  color: #e5e5e5;
 }
 
 .editor-panel {
@@ -170,6 +183,8 @@ body {
   border: 1px solid #ccc;
   width: 115px;
   font-size: 16px;
+  background: #222b3a;
+  color: #ffffff;
 }
 
 .rgb-group {
@@ -216,11 +231,11 @@ body {
 }
 
 .blue-btn:hover {
-  background: #005a9e;
+  background: #1b8fff;
 }
 
 .blue-btn.active {
-  background: #d83b01;
+  background: #0b5bd7;
 }
 
 .stop-btn {
@@ -244,14 +259,14 @@ body {
   flex: 1 1 50%;
   max-width: 50%;
   height: 40px;
-  border: 2px solid #ccc;
+  border: 2px solid #444b5c;
   border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   font-size: 20px;
-  background: white;
+  background: #222b3a;
   transition: 0.2s;
 }
 
@@ -265,9 +280,9 @@ body {
   width: 100%;
   height: 260px;
   margin-bottom: 15px;
-  border: 1px solid #ccc;
+  border: 1px solid #262b35;
   position: relative;
-  background: #fff;
+  background: #050609;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -289,6 +304,21 @@ body {
 
 .image-bottom-row {
   /* legacy layout wrapper replaced by explicit columns */
+}
+
+.warp-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.warp-options .warp-type {
+  width: 100%;
+}
+
+.warp-options #resetWarpBtn {
+  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .controls-left {
@@ -330,10 +360,10 @@ body {
   display: block;
   width: 440px;
   margin-top: 5px;
-  background: #f9f9f9;
+  background: #222b3a;
   padding: 5px;
   border-radius: 4px;
-  border: 1px solid #eee;
+  border: 1px solid #444b5c;
 }
 
 .zoom-section {
@@ -407,9 +437,9 @@ body {
   position: absolute;
   bottom: 100%;
   left: 0;
-  background: white;
-  border: 1px solid #ccc;
-  box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.1);
+  background: #222b3a;
+  border: 1px solid #444b5c;
+  box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.6);
   z-index: 1000;
   min-width: 140px;
   border-radius: 4px;
@@ -425,14 +455,14 @@ body {
   cursor: pointer;
   font-size: 13px;
   position: relative;
-  color: #333;
+  color: #f5f5f5;
   display: flex;
   justify-content: space-between;
 }
 
 .menu-item:hover {
-  background: #f0f0f0;
-  color: #0078d4;
+  background: #2d3648;
+  color: #1b8fff;
 }
 
 .sub-menu {
@@ -440,9 +470,9 @@ body {
   position: absolute;
   left: 100%;
   top: -5px;
-  background: white;
-  border: 1px solid #ccc;
-  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.1);
+  background: #222b3a;
+  border: 1px solid #444b5c;
+  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.6);
   border-radius: 4px;
   min-width: 100px;
 }
@@ -517,8 +547,8 @@ body {
 
 .original-image-box {
   width: 100%;
-  border: 1px solid #ccc;
-  background: #fff;
+  border: 1px solid #262b35;
+  background: #050609;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -555,6 +585,15 @@ body {
 
 .color-summary-control .hex-input {
   flex: 1;
+}
+
+.mesh-slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #666;
+  margin-top: 4px;
+  padding: 0 2px;
 }
 
 .color-modal-backdrop {

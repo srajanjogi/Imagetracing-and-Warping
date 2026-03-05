@@ -1,10 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 function App() {
   const [selectedMode, setSelectedMode] = useState('trace')
   const [selectedMediaType, setSelectedMediaType] = useState('image')
   const [showColorPopup, setShowColorPopup] = useState(false)
+  const [hasImage, setHasImage] = useState(false)
+
+  useEffect(() => {
+    window.onLegacyImageLoaded = () => setHasImage(true)
+    return () => {
+      delete window.onLegacyImageLoaded
+    }
+  }, [])
 
   const isTraceMode = selectedMode === 'trace'
   const isWarpMode = selectedMode === 'warp'
@@ -12,7 +20,7 @@ function App() {
   const isVideoMedia = selectedMediaType === 'video'
 
   return (
-    <div className="main-layout">
+    <div className={`main-layout ${hasImage ? 'has-image' : 'no-image'}`}>
       {/* Column 1: Upload + Original */}
       <div className="column column-1">
         <div className="column-section">
@@ -81,7 +89,11 @@ function App() {
         >
           <div className="top-btn-row">
             <div className="edge-section">
-              <button id="edgeBtn" className="blue-btn pair-btn">
+              <button
+                id="edgeBtn"
+                className="blue-btn pair-btn"
+                style={{ width: '100%' }}
+              >
                 Detect Edges
               </button>
               <label id="strengthCheckLabel">
@@ -112,19 +124,36 @@ function App() {
               <button
                 id="objDetectBtn"
                 className="blue-btn pair-btn"
-                style={{ width: 'auto', padding: '10px 15px' }}
+                style={{ width: 'auto', padding: '10px 15px', display: 'none' }}
               >
                 Detect Objects
               </button>
+              <div
+                id="edgeExtraRow"
+                style={{
+                  marginTop: 8,
+                  display: 'none',
+                  gap: 8,
+                  width: '100%',
+                }}
+              >
+                <button
+                  id="grayEdgeBtn"
+                  className="blue-btn pair-btn"
+                  style={{ flex: 1 }}
+                >
+                  Gray Edges
+                </button>
+
+                <button
+                  id="bgToggleBtn"
+                  className="blue-btn pair-btn"
+                  style={{ flex: 1 }}
+                >
+                  BG: Black
+                </button>
+              </div>
             </div>
-
-            <button id="grayEdgeBtn" className="blue-btn pair-btn">
-              Gray Edges
-            </button>
-
-            <button id="bgToggleBtn" className="blue-btn pair-btn">
-              BG: Black
-            </button>
           </div>
 
           <div className="action-column">
@@ -154,7 +183,8 @@ function App() {
             </button>
             <div
               id="warpOptions"
-              style={{ marginTop: 5, display: 'none', gap: 8, flexWrap: 'wrap' }}
+              className="warp-options"
+              style={{ marginTop: 5, display: 'none' }}
             >
               <button className="blue-btn warp-type" data-type="fisheye">
                 Fisheye
@@ -184,7 +214,7 @@ function App() {
                 Reset
               </button>
             </div>
-            <div id="meshSliderBox" style={{ display: 'none', width: 160 }}>
+            <div id="meshSliderBox" style={{ display: 'none', width: '100%' }}>
               <label style={{ fontSize: 12 }}>
                 Mesh Grid: <span id="meshValue">4 × 4</span>
               </label>
@@ -196,36 +226,13 @@ function App() {
                 defaultValue="4"
                 style={{ width: '100%' }}
               />
-              <div
-                style={{
-                  marginTop: 6,
-                  display: 'flex',
-                  gap: 6,
-                  fontSize: 12,
-                }}
-              >
-                <label>
-                  R:
-                  <input
-                    type="number"
-                    id="meshRowsInput"
-                    min="2"
-                    max="12"
-                    defaultValue="4"
-                    style={{ width: 48 }}
-                  />
-                </label>
-                <label>
-                  C:
-                  <input
-                    type="number"
-                    id="meshColsInput"
-                    min="2"
-                    max="12"
-                    defaultValue="4"
-                    style={{ width: 48 }}
-                  />
-                </label>
+              <div className="mesh-slider-ticks">
+                <span>3</span>
+                <span>4</span>
+                <span>5</span>
+                <span>6</span>
+                <span>7</span>
+                <span>8</span>
               </div>
             </div>
           </div>
@@ -288,9 +295,6 @@ function App() {
             <button id="timelapseBtn" className="blue-btn">
               Create Timelapse
             </button>
-            <button id="stopSaveBtn" className="stop-btn" disabled>
-              Save Video
-            </button>
           </div>
         </div>
 
@@ -329,9 +333,9 @@ function App() {
               <div
                 className="blue-btn"
                 style={{
-                  background: '#eee',
-                  color: '#333',
-                  border: '1px solid #ccc',
+                  background: '#222b3a',
+                  color: '#ffffff',
+                  border: '1px solid #444b5c',
                   minWidth: 110,
                 }}
               >
@@ -373,9 +377,6 @@ function App() {
                 {isVideoMedia && (
                   <div
                     className="menu-item"
-                    onMouseEnter={() =>
-                      window.showDuration && window.showDuration(true)
-                    }
                     onClick={() =>
                       window.selectFormat && window.selectFormat('webm')
                     }
@@ -384,15 +385,6 @@ function App() {
                   </div>
                 )}
               </div>
-            </div>
-            <div id="durationBox">
-              <label>Sec: </label>
-              <input
-                type="number"
-                id="videoTimeInput"
-                defaultValue="10"
-                min="1"
-              />
             </div>
             <button
               id="exportMainBtn"

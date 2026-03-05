@@ -371,20 +371,10 @@ canvas.onmousedown = e => {
     const mx = e.clientX - r.left;
     const my = e.clientY - r.top;
 
-    const node = meshGrid.find(n => Math.hypot(n.x - mx, n.y - my) < 10);
+    // Allow a slightly larger hit area and allow dragging border nodes too
+    const node = meshGrid.find(n => Math.hypot(n.x - mx, n.y - my) < 18);
 
-    // Ignore border nodes
-    if (node && (
-        node.origX === 0 ||
-        node.origX === canvas.width ||
-        node.origY === 0 ||
-        node.origY === canvas.height
-    )) {
-        draggingNode = null;
-        return; // ❌ border nodes cannot be dragged
-    }
-
-    draggingNode = node;
+    draggingNode = node || null;
 };
 
 
@@ -517,7 +507,7 @@ warpBtn.onclick = () => {
 
     // toggle warp options
     warpOptions.style.display =
-        warpOptions.style.display === "flex" ? "none" : "flex";
+        warpOptions.style.display === "grid" ? "none" : "grid";
 };
 
 document.getElementById('resetWarpBtn').onclick = resetWarp;
@@ -537,6 +527,7 @@ document.querySelectorAll('.warp-type').forEach(btn => {
         // ✅ turn OFF mesh when other warps are used
         isMeshActive = false;
         oCtx.clearRect(0, 0, overlay.width, overlay.height);
+        document.getElementById('meshSliderBox').style.display = "none";
 
         currentWarpType = type;
         warpImage(type);
@@ -556,17 +547,27 @@ document.getElementById('edgeBtn').onclick = () => {
     b.classList.toggle('active');
     b.innerText = edgeMode ? "Edges ON" : "Detect Edges";
 
-    document.getElementById('bgToggleBtn').style.display = edgeMode ? "block" : "none";
+    // Show/hide the Gray/BG row ONLY based on edge detection state
+    const extraRow = document.getElementById('edgeExtraRow');
+    if (extraRow) extraRow.style.display = edgeMode ? "flex" : "none";
+
+    const bgBtn = document.getElementById('bgToggleBtn');
+    if (bgBtn) bgBtn.style.display = edgeMode ? "block" : "none";
+
+    // When turning edges off, also reset Gray Edges state
+    if (!edgeMode) {
+        grayEdgeMode = false;
+        const grayBtn = document.getElementById('grayEdgeBtn');
+        if (grayBtn) grayBtn.classList.remove('active');
+    }
+
     applyChanges();
 };
 document.getElementById('grayEdgeBtn').onclick = () => {
+    // Toggle gray-edge rendering, but do NOT affect edgeMode
     grayEdgeMode = !grayEdgeMode;
-    edgeMode = false; // turn off color edges
 
-    document.getElementById('edgeBtn').classList.remove('active');
     document.getElementById('grayEdgeBtn').classList.toggle('active');
-
-    document.getElementById('bgToggleBtn').style.display = grayEdgeMode ? "block" : "none";
 
     applyChanges();
 };
@@ -593,12 +594,41 @@ document.getElementById('uploadBtn').onclick = () => {
             const img = new Image();
             img.onload = () => {
                 activeImg = img;
-                // Scale to fit up to 500×260 so preview size matches the original image box
-                const s = Math.min(500 / img.width, 260 / img.height, 1);
-                canvas.width = img.width * s; canvas.height = img.height * s;
-                overlay.width = canvas.width; overlay.height = canvas.height;
-                recCanvas.width = canvas.width; recCanvas.height = canvas.height;
+
+                // Make canvas exactly match the current preview box,
+                // then letterbox the image inside (mesh covers full preview).
                 const c = document.getElementById('imgContainer');
+                const boxW = c ? c.clientWidth || 500 : 500;
+                const boxH = c ? c.clientHeight || 260 : 260;
+
+                canvas.width = boxW;
+                canvas.height = boxH;
+                overlay.width = boxW;
+                overlay.height = boxH;
+                recCanvas.width = boxW;
+                recCanvas.height = boxH;
+
+                // Compute image draw size to fit inside box while preserving aspect
+                const imgAspect = img.width / img.height;
+                const boxAspect = boxW / boxH;
+                let drawW, drawH, offsetX, offsetY;
+
+                if (imgAspect > boxAspect) {
+                    // image is wider: fit width, letterbox vertically
+                    drawW = boxW;
+                    drawH = boxW / imgAspect;
+                    offsetX = 0;
+                    offsetY = (boxH - drawH) / 2;
+                } else {
+                    // image is taller: fit height, letterbox horizontally
+                    drawH = boxH;
+                    drawW = boxH * imgAspect;
+                    offsetX = (boxW - drawW) / 2;
+                    offsetY = 0;
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
 
                 // show the untouched original in column 1
                 const orig = document.getElementById('originalPreview');
@@ -609,6 +639,10 @@ document.getElementById('uploadBtn').onclick = () => {
                 applyChanges();
                 applyChanges();
                 originalImageSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                if (window.onLegacyImageLoaded) {
+                    window.onLegacyImageLoaded();
+                }
 
             };
             img.src = event.target.result;
@@ -656,24 +690,17 @@ let mediaRecorder;
 let recordedChunks = [];
 let isRecording = false;
 let autoStopTimer = null;
-
-/* ---------- MANUAL SAVE ---------- */
-document.getElementById('stopSaveBtn').onclick = () => {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
-    }
-};
+let lastRecordedTimelapseBlob = null;
 
 /* ---------- CREATE TIMELAPSE ---------- */
 document.getElementById('timelapseBtn').onclick = async () => {
     if (!activeImg) return alert("Please upload an image first");
 
-    timelapseBtn.disabled = true;
-    stopSaveBtn.disabled = false;
+    const timelapseBtnEl = document.getElementById('timelapseBtn');
+    const videoTimeEl = document.getElementById('videoTime');
+    timelapseBtnEl.disabled = true;
     recordedChunks = [];
     isRecording = true;
-    let recordedVideoBlob = null;
-
 
     /* ---------- VIDEO STREAM ---------- */
     const stream = recCanvas.captureStream(60);
@@ -684,32 +711,18 @@ document.getElementById('timelapseBtn').onclick = async () => {
     mediaRecorder.onstop = () => {
         clearTimeout(autoStopTimer);
 
-        // Store video instead of auto-downloading
-        recordedVideoBlob = new Blob(recordedChunks, { type: "video/webm" });
-
+        lastRecordedTimelapseBlob = new Blob(recordedChunks, { type: "video/webm" });
         isRecording = false;
-        timelapseBtn.disabled = false;
-        stopSaveBtn.disabled = false;   // enable Save button
+        timelapseBtnEl.disabled = false;
         oCtx.clearRect(0, 0, overlay.width, overlay.height);
 
-        alert("Tracing completed. Click 'Save Video' to download.");
+        alert("Tracing completed. Click Export to save video.");
     };
-
 
     mediaRecorder.start();
 
-    stopSaveBtn.onclick = () => {
-        if (!recordedVideoBlob) return;
-
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(recordedVideoBlob);
-        a.download = "human_sketch.webm";
-        a.click();
-    };
-
-
-    /* ---------- AUTO STOP BASED ON DURATION ---------- */
-    const durationSec = parseInt(videoTime.value || 10); // default 10 sec
+    /* ---------- AUTO STOP BASED ON DURATION (same as Video Duration dropdown) ---------- */
+    const durationSec = parseInt(videoTimeEl.value || 10, 10);
 
     /* ---------- PREPARE DRAWING DATA ---------- */
     const pct = darknessSlider.value / 100;
@@ -787,26 +800,34 @@ document.getElementById('timelapseBtn').onclick = async () => {
 
     nextObject();
 
+    const durationMs = durationSec * 1000;
+    const startTime = performance.now();
+    let doneDrawing = false;
+
     /* ---------- DRAW LOOP ---------- */
     function animate() {
         if (!isRecording) return;
 
-        for (let i = 0; i < pixelsPerFrame; i++) {
-            if (pathIndex >= path.length) {
-                if (!nextObject()) {
-                    isRecording = false;
-                    mediaRecorder.stop();   // STOP HERE
-                    return;
+        const elapsed = performance.now() - startTime;
+
+        // Draw new pixels only while we still have time and work to do
+        if (!doneDrawing) {
+            for (let i = 0; i < pixelsPerFrame; i++) {
+                if (pathIndex >= path.length) {
+                    if (!nextObject()) {
+                        doneDrawing = true;
+                        break;
+                    }
                 }
+
+                const p = path[pathIndex++];
+                const x = p % w, y = Math.floor(p / w);
+                const idx = p * 4;
+
+                ctx.fillStyle = `rgba(${edgeData.data[idx]},${edgeData.data[idx + 1]},${edgeData.data[idx + 2]},1)`;
+                ctx.fillRect(x, y, 1, 1);
+                current = { x, y };
             }
-
-            const p = path[pathIndex++];
-            const x = p % w, y = Math.floor(p / w);
-            const idx = p * 4;
-
-            ctx.fillStyle = `rgba(${edgeData.data[idx]},${edgeData.data[idx + 1]},${edgeData.data[idx + 2]},1)`;
-            ctx.fillRect(x, y, 1, 1);
-            current = { x, y };
         }
 
         oCtx.clearRect(0, 0, overlay.width, overlay.height);
@@ -819,6 +840,13 @@ document.getElementById('timelapseBtn').onclick = async () => {
         rCtx.drawImage(canvas, 0, 0);
         rCtx.drawImage(overlay, 0, 0);
 
+        // Enforce real-time duration based on dropdown
+        if (elapsed >= durationMs) {
+            isRecording = false;
+            mediaRecorder.stop();
+            return;
+        }
+
         requestAnimationFrame(animate);
     }
 
@@ -830,7 +858,8 @@ let isWaitingForFirstMove = false;
 let exportChunks = [];
 let hasStartedRecording = false;
 function showDuration(show) {
-    document.getElementById('durationBox').style.display = show ? 'block' : 'none';
+    const el = document.getElementById('durationBox');
+    if (el) el.style.display = show ? 'block' : 'none';
 }
 
 // 1. Just updates the UI and saves the choice
@@ -841,6 +870,10 @@ function selectFormat(format) {
     label.style.color = "#0078d4";
 }
 
+// Expose to window so React Export UI can call these
+window.showDuration = showDuration;
+window.selectFormat = selectFormat;
+
 // 2. Actually performs the work when Export button is clicked
 async function executeExport() {
     if (!selectedExportFormat) {
@@ -849,7 +882,23 @@ async function executeExport() {
     }
 
     if (selectedExportFormat === 'webm') {
-        // Capture ONLY the main canvas (no grid/dots)
+        // If timelapse is still recording, stop it (replaces old "Save Video" button)
+        if (isRecording && mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+            return;
+        }
+        // If we have a finished timelapse, download it (single Export flow for video)
+        if (lastRecordedTimelapseBlob) {
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(lastRecordedTimelapseBlob);
+            a.download = "human_sketch.webm";
+            a.click();
+            lastRecordedTimelapseBlob = null;
+            return;
+        }
+
+        // Otherwise: record mesh warp animation (start immediately, no "move point" step)
+        applyMeshWarp(); // Render current frame so first frame isn't black
         const stream = canvas.captureStream(60);
         mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
         exportChunks = [];
@@ -865,14 +914,15 @@ async function executeExport() {
         };
 
         isExportRecording = true;
-        hasStartedRecording = false;
+        hasStartedRecording = true; // Start recording right away
+        mediaRecorder.start();
 
         const btn = document.getElementById('exportMainBtn');
-        btn.innerText = "MOVE ANY POINT TO START...";
-        btn.style.background = "#ffa500";
+        btn.innerText = "🔴 RECORDING... CLICK TO SAVE";
+        btn.style.background = "red";
 
         btn.onclick = () => {
-            if (mediaRecorder.state === "recording") {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
                 mediaRecorder.stop();
             }
             isExportRecording = false;
@@ -893,6 +943,8 @@ async function executeExport() {
         }
     }
 }
+window.executeExport = executeExport;
+
 window.onmousemove = e => {
     if (!draggingNode || !isMeshActive) return;
 
@@ -1152,20 +1204,4 @@ document.getElementById('objDetectBtn').onclick = async () => {
     btn.innerText = "Detect Objects";
     isTracingActive = false;
 };
-const meshRowsInput = document.getElementById('meshRowsInput');
-const meshColsInput = document.getElementById('meshColsInput');
-
-meshRowsInput.oninput = meshColsInput.oninput = () => {
-    meshRows = parseInt(meshRowsInput.value);
-    meshCols = parseInt(meshColsInput.value);
-
-    meshValue.innerText = `${meshRows} × ${meshCols}`;
-
-    if (isMeshActive) {
-        initMesh();
-        applyMeshWarp();
-        drawOverlay();
-    }
-};
-
 }; // end initLegacyApp
