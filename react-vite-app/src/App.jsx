@@ -13,7 +13,7 @@ function App() {
 
   return (
     <div className="main-layout">
-      {/* Column 1: Upload + Mode + Color Editing */}
+      {/* Column 1: Upload + Original */}
       <div className="column column-1">
         <div className="column-section">
           <button
@@ -32,7 +32,12 @@ function App() {
           </div>
         </div>
 
+      </div>
+
+      {/* Column 2: Mode selection + main controls */}
+      <div className="column column-2">
         <div className="column-section">
+          <div className="section-title">Mode</div>
           <div className="mode-toggle-row">
             <button
               type="button"
@@ -54,33 +59,6 @@ function App() {
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Column 2: Image / Video options and main controls */}
-      <div className="column column-2">
-        <div className="column-section">
-          <div className="section-title">Output Type</div>
-          <div className="media-toggle-row">
-            <button
-              type="button"
-              className={`blue-btn media-toggle-btn ${
-                isImageMedia ? 'selected' : ''
-              }`}
-              onClick={() => setSelectedMediaType('image')}
-            >
-              Image
-            </button>
-            <button
-              type="button"
-              className={`blue-btn media-toggle-btn ${
-                isVideoMedia ? 'selected' : ''
-              }`}
-              onClick={() => setSelectedMediaType('video')}
-            >
-              Video
-            </button>
-          </div>
-        </div>
 
         <div
           className="color-summary-row"
@@ -95,10 +73,10 @@ function App() {
           </div>
         </div>
 
-        {/* Trace + Image controls */}
+        {/* Trace controls (always visible in column 2 when Trace mode is selected) */}
         <div
-          className={`controls-left mode-trace media-image ${
-            isTraceMode && isImageMedia ? 'is-active' : 'is-inactive'
+          className={`controls-left mode-trace ${
+            isTraceMode ? 'is-active' : 'is-inactive'
           }`}
         >
           <div className="top-btn-row">
@@ -161,34 +139,6 @@ function App() {
                 🖊️
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Trace + Video controls */}
-        <div
-          className={`mode-trace media-video ${
-            isTraceMode && isVideoMedia ? 'is-active' : 'is-inactive'
-          }`}
-        >
-          <div className="action-column">
-            <div className="time-selector">
-              Video Duration:
-              <select id="videoTime">
-                <option value="5">5 Seconds</option>
-                <option value="10" defaultValue>
-                  10 Seconds
-                </option>
-                <option value="15">15 Seconds</option>
-                <option value="20">20 Seconds</option>
-              </select>
-            </div>
-
-            <button id="timelapseBtn" className="blue-btn">
-              Create Timelapse
-            </button>
-            <button id="stopSaveBtn" className="stop-btn" disabled>
-              Save Video
-            </button>
           </div>
         </div>
 
@@ -282,13 +232,65 @@ function App() {
         </div>
       </div>
 
-      {/* Column 3: Preview + Zoom + Export */}
+      {/* Column 3: Preview + Output Type + Export */}
       <div className="column column-3">
         <div className="column-section">
           <div className="section-title">Preview</div>
           <div className="img-container" id="imgContainer">
             <canvas id="imageCanvas"></canvas>
             <canvas id="overlayCanvas"></canvas>
+          </div>
+        </div>
+
+        <div className="column-section">
+          <div className="section-title">Output Type</div>
+          <div className="media-toggle-row">
+            <button
+              type="button"
+              className={`blue-btn media-toggle-btn ${
+                isImageMedia ? 'selected' : ''
+              }`}
+              onClick={() => setSelectedMediaType('image')}
+            >
+              Image
+            </button>
+            <button
+              type="button"
+              className={`blue-btn media-toggle-btn ${
+                isVideoMedia ? 'selected' : ''
+              }`}
+              onClick={() => setSelectedMediaType('video')}
+            >
+              Video
+            </button>
+          </div>
+        </div>
+
+        {/* Trace + Video controls now shown in column 3 */}
+        <div
+          className={`mode-trace media-video ${
+            isTraceMode && isVideoMedia ? 'is-active' : 'is-inactive'
+          }`}
+        >
+          <div className="action-column">
+            <div className="time-selector">
+              Video Duration:
+              <select id="videoTime">
+                <option value="5">5 Seconds</option>
+                <option value="10" defaultValue>
+                  10 Seconds
+                </option>
+                <option value="15">15 Seconds</option>
+                <option value="20">20 Seconds</option>
+              </select>
+            </div>
+
+            <button id="timelapseBtn" className="blue-btn">
+              Create Timelapse
+            </button>
+            <button id="stopSaveBtn" className="stop-btn" disabled>
+              Save Video
+            </button>
           </div>
         </div>
 
@@ -322,7 +324,7 @@ function App() {
                   marginBottom: 2,
                 }}
               >
-                Format:
+                Export type:
               </label>
               <div
                 className="blue-btn"
@@ -333,19 +335,16 @@ function App() {
                   minWidth: 110,
                 }}
               >
-                <span id="currentFormatLabel">Select... ▼</span>
+                <span id="currentFormatLabel">Export type ▼</span>
               </div>
               <div className="export-menu">
-                <div
-                  className="menu-item"
-                  onMouseEnter={() =>
-                    window.showDuration && window.showDuration(false)
-                  }
-                >
-                  🖼️ Image <span>▶</span>
-                  <div className="sub-menu">
+                {isImageMedia && (
+                  <>
                     <div
                       className="menu-item"
+                      onMouseEnter={() =>
+                        window.showDuration && window.showDuration(false)
+                      }
                       onClick={() =>
                         window.selectFormat && window.selectFormat('png')
                       }
@@ -368,26 +367,22 @@ function App() {
                     >
                       JSON
                     </div>
+                  </>
+                )}
+
+                {isVideoMedia && (
+                  <div
+                    className="menu-item"
+                    onMouseEnter={() =>
+                      window.showDuration && window.showDuration(true)
+                    }
+                    onClick={() =>
+                      window.selectFormat && window.selectFormat('webm')
+                    }
+                  >
+                    WebM
                   </div>
-                </div>
-                <div
-                  className="menu-item"
-                  onMouseEnter={() =>
-                    window.showDuration && window.showDuration(true)
-                  }
-                >
-                  🎥 Video <span>▶</span>
-                  <div className="sub-menu">
-                    <div
-                      className="menu-item"
-                      onClick={() =>
-                        window.selectFormat && window.selectFormat('webm')
-                      }
-                    >
-                      WebM
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
             <div id="durationBox">

@@ -237,10 +237,12 @@ body {
   gap: 10px;
   margin-bottom: 5px;
   align-items: center;
+  width: 100%;
 }
 
 .tool-icon {
-  width: 40px;
+  flex: 1 1 50%;
+  max-width: 50%;
   height: 40px;
   border: 2px solid #ccc;
   border-radius: 5px;
@@ -326,7 +328,7 @@ body {
 
 #sliderContainer {
   display: block;
-  width: 220px;
+  width: 440px;
   margin-top: 5px;
   background: #f9f9f9;
   padding: 5px;
@@ -462,6 +464,25 @@ body {
 .selected-format {
   font-weight: bold;
   color: #0078d4 !important;
+}
+
+/* Make format selector occupy ~60% and Export button ~40% of row */
+.export-section > div {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.export-wrapper {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+#exportMainBtn {
+  flex: 0 0 auto;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .mode-toggle-row,
